@@ -48,7 +48,7 @@ iframe { flex:1; height:100%; border:none; background:#f4f6f9; width:100%; }
 
 <template id="tplDados">
 <!DOCTYPE html>
-<!-- saved from =(0041)https://rateiofrete.vercel.app/dados.html -->
+<!-- saved from url=(0041)https://rateiofrete.vercel.app/dados.html -->
 <html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <title>Dados - Cotações PRO</title>
@@ -183,6 +183,7 @@ input:focus { outline: none; border-color: var(--marvel-blue); box-shadow: 0 0 0
 var SUPABASE_URL = "https://ndpfmjetlvcujhgphqoi.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcGZtamV0bHZjdWpoZ3BocW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NDk2MTksImV4cCI6MjA5ODAyNTYxOX0.M1ypP2OOSGOojCGWfq-X1UNJzfYhD8a-J47QtR6Qw00";
 
+
 function normalizarCoord(coord){
   return [Number(coord[0]).toFixed(6), Number(coord[1]).toFixed(6)];
 }
@@ -215,13 +216,13 @@ async function salvarKmSupabase(chave,a,b,km,origemTela){
   try{
     const A = normalizarCoord(a);
     const B = normalizarCoord(b);
-    await fetch(`${SUPABASE_URL}/rest/v1/cache_rotas_km`, {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/cache_rotas_km`, {
       method: "POST",
       headers: {
         "apikey": SUPABASE_ANON_KEY,
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
         "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates"
+        "Prefer": "resolution=merge-duplicates,return=minimal"
       },
       body: JSON.stringify({
         route_key: chave,
@@ -234,6 +235,10 @@ async function salvarKmSupabase(chave,a,b,km,origemTela){
         atualizado_em: new Date().toISOString()
       })
     });
+    if(!resp.ok){
+      const erro = await resp.text();
+      console.warn("Supabase não salvou a rota:", erro);
+    }
   }catch(e){ console.warn("Falha ao salvar km no Supabase", e); }
 }
 
@@ -244,6 +249,9 @@ async function getKmComCache(a,b,origemTela){
   // 1) Busca primeiro no cache local do navegador
   const cacheLocal = localStorage.getItem(localKey);
   if(cacheLocal && Number(cacheLocal) > 0){
+    // Se o navegador já tinha a rota salva antes de configurar o Supabase,
+    // sincroniza também com a base para outros usuários aproveitarem.
+    await salvarKmSupabase(chave,a,b,Number(cacheLocal),origemTela);
     return Number(cacheLocal);
   }
 
