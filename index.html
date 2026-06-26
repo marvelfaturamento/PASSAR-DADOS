@@ -265,9 +265,14 @@ async function getKmComCache(a,b,origemTela){
   const r = await fetch(`https://api.openrouteservice.org/v2/directions/driving-car`,{
     method:"POST",
     headers:{"Authorization":API_KEY,"Content-Type":"application/json"},
-    body:JSON.stringify({coordinates:[a,b]})
+    body:JSON.stringify({coordinates:[a,b], radiuses:[10000,10000]})
   });
   const d = await r.json();
+  if(!r.ok || !d.routes || !d.routes[0]){
+    console.warn("OpenRouteService retornou erro:", d);
+    const msg = (d && d.error && d.error.message) ? d.error.message : "Não foi possível calcular esta rota pela API.";
+    throw new Error(msg);
+  }
   const km = d.routes[0].summary.distance/1000;
 
   // 4) Salva para próximas consultas
